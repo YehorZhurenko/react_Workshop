@@ -1,19 +1,45 @@
-import { useDispatch, useSelector } from 'react-redux';
-import { deletePlanet, togglePlanet, updatePlanet } from '../../redux/slices/planetsSlice';
-import { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { deletePlanet, updatePlanet } from '../../redux/slices/planetsSlice';
+import { useRef, useState } from 'react';
 import styles from '../../styles/Planet.module.css';
+import styled from 'styled-components';
+
+const Button = styled.button`
+  appearance: button;
+  border: none;
+  background: transparent;
+  width: 30px;
+  font-size: 16px;
+`;
+
+const Input = styled.input`
+  width: 80%;
+  height: 100%;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  text-alignment: center;
+  text-align: center;
+
+  &:focus {
+    outline: none;
+    background-color: white;
+  }
+`;
 
 const Planet = ({ id, name, climate, size }) => {
   const [togglePlanet, setTogglePlanet] = useState(false);
   const [planetName, setPlanetName] = useState(name);
   const dispatch = useDispatch();
+  const inputRef = useRef(null);
 
   const handleDeletePlanet = (id) => {
     dispatch(deletePlanet(id));
   };
 
-  const handleTogglePlanet = (id) => {
-    setTogglePlanet(!togglePlanet);
+  const handleTogglePlanet = async (id) => {
+    await setTogglePlanet(!togglePlanet);
+    inputRef.current.focus();
   };
 
   const handleChangeName = (e) => {
@@ -26,37 +52,36 @@ const Planet = ({ id, name, climate, size }) => {
 
   return (
     <div className={styles.container}>
-      <div className="item"> {id}</div>
-      <div className="item">
+      <div className={styles.number}>{id}</div>
+      <div>
         {' '}
         {togglePlanet ? (
-          <>
-            <input
-              type="text"
-              value={planetName}
-              onChange={(e) => {
-                handleChangeName(e);
-              }}
-            />
-          </>
+          <Input
+            type="text"
+            ref={inputRef}
+            value={planetName}
+            onChange={(e) => {
+              handleChangeName(e);
+            }}
+          />
         ) : (
           <b>{planetName}</b>
         )}
       </div>
-      <div className="item"> {climate}</div>
-      <div className="item"> {size}</div>
-      <div className="item">
-        <button onClick={() => handleDeletePlanet(id)}>del</button>
+      <div> {climate}</div>
+      <div className={styles.size}> {size}</div>
+      <div className={styles.buttons}>
+        <Button onClick={() => handleDeletePlanet(id)}>✖</Button>
         {togglePlanet ? (
-          <button
+          <Button
             onClick={() => {
               setTogglePlanet(false);
               handleSubmit();
             }}>
-            done
-          </button>
+            ✔
+          </Button>
         ) : (
-          <button onClick={handleTogglePlanet}>edit</button>
+          <Button onClick={handleTogglePlanet}>✎</Button>
         )}
       </div>
     </div>

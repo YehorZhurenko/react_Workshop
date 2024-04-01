@@ -1,4 +1,4 @@
-import { createAsyncThunk, createSlice, isRejectedWithValue } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
 export const fetchPlanets = createAsyncThunk(
@@ -8,11 +8,36 @@ export const fetchPlanets = createAsyncThunk(
     try {
       const res = await axios.get('https://64d4f976b592423e4694f8ad.mockapi.io/planets');
       const planetData = await res.data;
-      console.log('thunkAPI: ', thunkAPI);
-      console.log('thunkAPI.getState(): ', thunkAPI.getState());
+
+      {
+        console.log('planetsSlice: ', planetsSlice);
+        console.log('planetsSlice.actions: ', planetsSlice.actions);
+        console.log('planetsSlice.caseReducers: ', planetsSlice.caseReducers);
+
+        console.log('planetsSlice.getInitialState(): ', planetsSlice.getInitialState());
+        console.log('planetsSlice.getSelectors(): ', planetsSlice.getSelectors());
+        console.log('thunkAPI: ', thunkAPI);
+      }
+
       return planetData;
     } catch (error) {
       return thunkAPI.rejectWithValue(console.error());
+    }
+  },
+);
+
+export const addPlanet = createAsyncThunk(
+  'planets/addPlanet',
+
+  async (planet) => {
+    try {
+      await axios.post('https://64d4f976b592423e4694f8ad.mockapi.io/planets', planet);
+
+      const newState = await axios.get('https://64d4f976b592423e4694f8ad.mockapi.io/planets');
+
+      return newState.data;
+    } catch (error) {
+      console.error();
     }
   },
 );
@@ -22,14 +47,10 @@ export const deletePlanet = createAsyncThunk(
 
   async (id, { rejectWithValue }) => {
     try {
-      const res = await fetch(`https://64d4f976b592423e4694f8ad.mockapi.io/planets/${id}`, {
+      await fetch(`https://64d4f976b592423e4694f8ad.mockapi.io/planets/${id}`, {
         method: 'DELETE',
       });
-      console.log('deleted: ', id);
-
-      if (!res.ok) {
-        throw new Error('Can\n`t delete this planet');
-      }
+      console.log('async del planet n', id);
       return id;
     } catch (error) {
       return rejectWithValue(error);
@@ -41,7 +62,6 @@ export const updatePlanet = createAsyncThunk(
   'planets/updatePlanet',
 
   async ({ id, planetName }, { rejectWithValue }) => {
-    console.log(`https://64d4f976b592423e4694f8ad.mockapi.io/planets/${id} for ${planetName}`);
     try {
       const result = await fetch(`https://64d4f976b592423e4694f8ad.mockapi.io/planets/${id}`, {
         method: 'PUT',
@@ -50,32 +70,9 @@ export const updatePlanet = createAsyncThunk(
         body: JSON.stringify({ name: planetName }),
       });
 
-      const res = await fetch('https://64d4f976b592423e4694f8ad.mockapi.io/planets');
-      const planetData = await res.json();
-
-      return planetData;
+      console.log(`planet ${id} got new name ${planetName} `);
     } catch (error) {
       rejectWithValue(console.error());
-    }
-  },
-);
-
-export const addPlanet = createAsyncThunk(
-  'planets/addPlanet',
-
-  async (planet) => {
-    console.log(planet);
-    try {
-      await axios.post('https://64d4f976b592423e4694f8ad.mockapi.io/planets', planet);
-
-      const res = await fetch('https://64d4f976b592423e4694f8ad.mockapi.io/planets');
-      const planetData = await res.json();
-
-      return planetData;
-
-      //return planet;
-    } catch (error) {
-      console.error();
     }
   },
 );
@@ -92,29 +89,41 @@ export const planetsSlice = createSlice({
   reducers: {
     addPlanets: (state, action) => {
       state.planets.push(action.payload);
-      console.log('action: ', action);
+      console.log('planet added: ', action.payload);
     },
     delPlanets: (state) => {
       state.planets.length = 0;
+      console.log('deleted all planets');
     },
     delPlanet: (state, action) => {
       state.planets = state.planets.filter((val) => val.id !== action.payload.id);
+      console.log('deleted planet n', action.payload.id);
     },
   },
   extraReducers: (builder) => {
     //  fetchPlanets
+
+    function handlePending(state, action) {
+      state.status = 'pending';
+      state.error = null;
+    }
+
+    function handleRejected(state, action) {
+      state.status = 'rejected';
+      state.error = action.payload;
+    }
+
+    // fetch planets
 
     builder.addCase(fetchPlanets.fulfilled, (state, action) => {
       state.status = 'resolved';
       state.planets = action.payload;
     });
     builder.addCase(fetchPlanets.rejected, (state, action) => {
-      state.status = 'rejected';
-      state.planets.error = action.payload;
+      handleRejected(state, action);
     });
     builder.addCase(fetchPlanets.pending, (state) => {
-      state.status = 'pending';
-      state.error = null;
+      handlePending(state);
     });
 
     //  deletePlanet
@@ -126,13 +135,11 @@ export const planetsSlice = createSlice({
     });
 
     builder.addCase(deletePlanet.rejected, (state, action) => {
-      state.status = 'rejected';
-      state.planets.error = action.payload;
+      handleRejected(state, action);
     });
 
     builder.addCase(deletePlanet.pending, (state) => {
-      state.status = 'pending';
-      state.error = null;
+      handlePending(state);
     });
 
     //  addPlanet
@@ -143,18 +150,16 @@ export const planetsSlice = createSlice({
     });
 
     builder.addCase(addPlanet.rejected, (state, action) => {
-      state.status = 'rejected';
-      state.planets.error = action.payload;
+      handleRejected(state, action);
     });
 
     builder.addCase(addPlanet.pending, (state, action) => {
-      state.status = 'pending';
-      state.error = null;
+      handlePending(state);
     });
-
-    // Patch planet
   },
 });
 
-export const { addPlanets, delPlanets } = planetsSlice.actions;
+export const planetsCount = (state) => state.planets.planets.length;
+
+export const { addPlanets, delPlanets, delPlanet } = planetsSlice.actions;
 export default planetsSlice.reducer;
